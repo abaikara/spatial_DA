@@ -1,0 +1,130 @@
+---
+title: "SpatialDA_project1"
+output: pdf_document
+author: Ainur Baikara
+date: today
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Spatial Data Manipulation
+
+```{r}
+#loading libaries 
+library(sp)
+library(rgdal)
+library(ggplot2)
+library(miceadds)
+library(ggmap)
+library(rgeos)
+library(maptools)
+library(dplyr)
+library(tidyr)
+library(tmap)
+library(data.table) 
+library(sf)
+```
+
+```{r}
+pgh <- readOGR(dsn="/Users/ainurbaikara/Desktop/pgh_streets", layer="pgh_streets")
+summary(pgh)
+```
+
+I have checked for null values just in case all rows in certain observations consist null values. 
+```{r}
+head(pgh)
+```
+
+
+```{r}
+# # to extract the content 
+# test_pgh <-data.frame(pgh)
+# head(test_pgh)
+pgh <- na.omit(pgh)
+```
+
+## (1a) Find the total number of road segments.
+```{r}
+nrow(pgh)
+```
+So, this shows that in the shapefile there are 22222 road segments. 
+
+## (1b)  Calculate minimum, maximum, and mean segment lengths.
+```{r}
+seg_len <- pgh$LENGTH
+summary(seg_len)
+```
+Here are the information we need. Minimum segment length is 0.00030, maximum is 1.46654 and mean is 0.05980
+
+## (1c) Filter out the segments that are below the mean length that you calculated in (b) and then create a map showing the remaining segments. [5 points]
+
+```{r}
+pgh_1c <- pgh[pgh$LENGTH >= 0.05980, ]
+summary(pgh_1c)
+```
+As a comparison I wanted to make map before and after. First map shows the map with all segments, second map shows the map with the segments above the mean. 
+
+```{r}
+plot(pgh, axes=TRUE, border = "green")
+plot(pgh_1c, axes=TRUE, border="gray")
+```
+I have found another cool mapping libary which named sp, so I wanted to add it for this project just in case, because it has better visual. So same here, comparing the map of road segments where one has all road segments values and other one just consist of road segments above the mean. Those maps color coded based on the zipcode
+
+```{r}
+spplot(pgh, z="ZIPR")
+spplot(pgh_1c, z="ZIPR")
+```
+
+
+
+# Spatial Data Aggregation
+
+```{r}
+# a.data <- over(statt, polys[,"ons_label"])
+# statt$bcode <- a.data$ons_label
+# statt@data
+```
+
+## (2a) Aggregate the data based on the mean of the point values. 
+
+```{r}
+load("/Users/ainurbaikara/Desktop/lnd.RData")
+load("/Users/ainurbaikara/Desktop/stations.RData")
+stt<-aggregate(stations[c("Value")],lnd,FUN=mean)
+stt.plot = st_as_sf(stt)
+```
+Create a map and prepare a report on the result
+
+```{r}
+qtm(shp = stt.plot, fill = "Value", fill.palette = "-Blues", title = "Aggregated map based on the mean of point values")
+```
+
+## (2b)  Run regression on the point values before and after aggregation. Prepare a report on the result
+
+```{r}
+load("/Users/ainurbaikara/Desktop/lnd.RData")
+load("/Users/ainurbaikara/Desktop/stations.RData")
+stt1<-aggregate(stations[c("Value", "coords.x1")],lnd,FUN=mean)
+# stt1@data[["coords.x1"]]
+```
+
+
+```{r}
+ggplot(stations@data, aes(x = Value, y=coords.x1)) + geom_point() +
+  geom_smooth(method=lm, # add linear regression line
+              se=FALSE) # (by default includes 95% confidence region)
+```
+
+```{r}
+ggplot(stt1@data, aes(x = Value, y=coords.x1)) + geom_point() +
+  geom_smooth(method=lm, # add linear regression line
+              se=FALSE) # (by default includes 95% confidence region)
+```
+
+
+Looks like there are some patterns in the aggregated points. As can be seen from the second plot values are following some patterns in terms of the coordinate changes. At some point it goes up and at some point it goes down.
+
+
+
